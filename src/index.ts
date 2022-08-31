@@ -1,51 +1,42 @@
-import { providers, Wallet } from "ethers";
+import { Web3Provider } from "@ethersproject/providers";
 import { FlashbotsBundleProvider } from "@flashbots/ethers-provider-bundle";
+import { BigNumber, providers, Wallet } from "ethers";
 
-const CHAIN_ID = 5;
+const dotenv = require('dotenv');
+dotenv.config()
+
+const CHAIN_ID = 1;
 const provider = new providers.InfuraProvider(CHAIN_ID)
+const FLASHBOTS_ENDPOINT = "https://relay-goerli.flashbots.net"
+const GWEI = BigNumber.from(10).pow(9)
+const ETHER = BigNumber.from(10).pow(18)
 
-const FLASHBOTS_ENDPOINT = "https://relay-goerli.flashbots.net";
-
-if (process.env.WALLET_PRIVATE_KEY === undefined) {
-  console.error("Please provide WALLET_PRIVATE_KEY env")
-  process.exit(1)
-}
-const wallet = new Wallet(process.env.WALLET_PRIVATE_KEY, provider)
-
-// ethers.js can use Bignumber.js class OR the JavaScript-native bigint. I changed this to bigint as it is MUCH easier to deal with
-const GWEI = 10n ** 9n
-const ETHER = 10n ** 18n
 
 async function main() {
-  const flashbotsProvider = await FlashbotsBundleProvider.create(provider, Wallet.createRandom(), FLASHBOTS_ENDPOINT)
-  provider.on('block', async (blockNumber) => {
-    console.log(blockNumber)
+
+    const flashBotsProvider = await FlashbotsBundleProvider.create(provider,Wallet.createRandom(),FLASHBOTS_ENDPOINT)
     
-    const bundleSubmitResponse = await flashbotsProvider.sendBundle(
-      [
-        {
-          transaction: {
-            chainId: CHAIN_ID,
-            type: 2,
-            value: ETHER / 100n * 3n,
-            data: "0x1249c58b",
-            maxFeePerGas: GWEI * 3n,
-            maxPriorityFeePerGas: GWEI * 2n,
-            to: "0x20EE855E43A7af19E407E39E5110c2C1Ee41F64D"
-          },
-          signer: wallet
-        }
-      ], blockNumber + 1
-    )
-
-    // By exiting this function (via return) when the type is detected as a "RelayResponseError", TypeScript recognizes bundleSubmitResponse must be a success type object (FlashbotsTransactionResponse) after the if block.
-    if ('error' in bundleSubmitResponse) {
-      console.warn(bundleSubmitResponse.error.message)
-      return
+    if(process.env.WALLET_PRIVATE_KEY === undefined)
+    {
+        console.error("Please Provide WALLET_PRIVATE_KEY env")
+        process.exit(1);
     }
+    const wallet = new Wallet(process.env.WALLET_PRIVATE_KEY,provider)
 
-    console.log(await bundleSubmitResponse.simulate())
-  })
+
+    const transaction = await provider.getTransactionReceipt("0xee0c7dcdf5e7f7645498fe578129352df6f89b729e2f0f5bb05783ef56d8ba89");
+    console.log(transaction)
+
+    var block = await provider.getBlock("13819572");
+    console.log(block);
+
+    // provider.on('block',async (blockNumber)=>{
+    //   console.log(blockNumber)
+    //   var blockInfo = await provider.getBlock(blockNumber)
+    //   console.log(blockInfo)
+    // })
 }
 
 main();
+
+
